@@ -4,7 +4,7 @@
 *
 * Assembling : gcc -Wall server.c -pthread -o server
 *
-* Description : coffee machine
+* Description :  bank machine
 *
 * Copyright (c) 2021, ITS Partner LLC.
 * All rights reserved.
@@ -18,13 +18,6 @@
 
 #define _GNU_SOURCE
 
-#include "head_server.h"
-
-#define BUFFER_SIZE 32
-
-#define PORT 2000
-
-
 enum states {
     st_begin_work = 0,
     st_waiting_for_card,
@@ -33,117 +26,131 @@ enum states {
     st_choose_language,
     st_enter_pass,
     st_block_card,
-    st_give_back_card,
-    st_send_data_block_card,
-    st_encript_data,
     st_wait_action,
     st_request_for_receipt,
     st_request_for_continuation,
     st_end_work
 };
 
-enum action_state {
-	st_add_money = 0,
-	st_wait_for_bill,
-	st_check_bill,
-	st_give_back_bill,
-	st_add_bill_to_account,
-	st_send_request_to_bank,
+enum action_states {
+    st_add_money = 0,
+    st_wait_for_bill,
+    st_check_bill,
+    st_give_back_bill,
+    st_add_bill_to_account,
+    st_send_request_to_bank,
+    st_encript_data_for_add_money,
 
-	st_take_money,
-	st_wait_money_count,
-	st_send_request_for_take_money,
-	st_encript_data_for_take_money,
-	st_decript_data,
+    st_take_money,
+    st_wait_money_count,
+    st_send_request_for_take_money,
+    st_encript_data_for_take_money,
+    st_decript_data,
+
+    st_end,
 };
 
 enum signals{
-	true_signal = 0,
-	false_signal,
+    true_signal = 0,
+    false_signal,
 };
 
 typedef void (*func_ptr)(enum signals* signal, int sock);
 
 struct transition {
-	enum states new_state;
-	func_ptr function1;
-	func_ptr function2;
+    enum states new_state;
+    func_ptr function1;
+    func_ptr function2;
 };
 
-void begin_work (enum signals* signal, int sock);
-void end_work (enum signals* signal, int sock);
-void waiting_for_card (enum signals* signal, int sock);
-void check_card (enum signals* signal, int sock);
-void give_back_card (enum signals* signal, int sock);
-void choose_language (enum signals* signal, int sock);
-void enter_pass (enum signals* signal, int sock);
-void block_card (enum signals* signal, int sock);
-void give_back_card (enum signals* signal, int sock);
-void send_data_block_card (enum signals* signal, int sock);
-void encript_data (enum signals* signal, int sock);
-void wait_action (enum signals* signal, int sock);
-void request_for_continuation (enum signals* signal, int sock);
-void request_for_receipt (enum signals* signal, int sock);
-
-void add_money (enum signals* signal, int sock);
-void wait_for_bill (enum signals* signal, int sock);
-void check_bill (enum signals* signal, int sock);
-void give_back_bill (enum signals* signal, int sock);
-void add_bill_to_account (enum signals* signal, int sock);
-void send_request_to_bank (enum signals* signal, int sock);
-
-void take_money (enum signals* signal, int sock);
-void wait_money_count (enum signals* signal, int sock);
-void send_request_for_take_money (enum signals* signal, int sock);
-void encript_data_for_take_money (enum signals* signal, int sock);
-void decript_data (enum signals* signal, int sock);
-
-struct transition sm_table [7][2] = {
-	[st_begin_work][true_signal] = {st_waiting_for_card, waiting_for_card, NULL},
-	[st_begin_work][false_signal] = {st_end_work, end_work, NULL},
-
-	[st_waiting_for_card][true_signal] = {st_check_card, check_card, NULL},
-	[st_waiting_for_card][false_signal] = {st_end_work, NULL, NULL},
-	
-	[st_check_card][true_signal] = {st_choose_language, choose_language, NULL},
-	[st_check_card][false_signal] = {st_give_back_card, give_back_card, NULL},
-	
-	[st_give_back_card][true_signal] = {st_waiting_for_card, waiting_for_card, NULL},
-	[st_give_back_card][false_signal] = {st_end_work NULL, NULL},	
-
-	[st_choose_language][true_signal] = {st_enter_pass, enter_pass, NULL},
-	[st_choose_language][false_signal] = {st_end_work, NULL, NULL},
-
-	[st_enter_pass][true_signal] = {st_wait_action, wait_action, NULL},
-	[st_enter_pass][false_signal] = {st_block_card, block_card, NULL},
-
-	[st_block_card][true_signal] = {st_give_back_card, give_back_card, send_data_block_card},
-	[st_block_card][false_signal] = {st_end_work, NULL, NULL},
-
-	[st_give_back_card][true_signal] = {st_waiting_for_card, waiting_for_card, NULL},
-	[st_give_back_card][false_signal] = {st_end_work, NULL, NULL},
-
-	[st_send_data_block_card][true_signal] = {st_encript_data, encript_data, NULL},
-	[st_send_data_block_card][false_signal] = {st_end_work, NULL, NULL},
-
-	[st_encript_data][true_signal] = {st_end_work, end_work, NULL},
-	[st_encript_data][false_signal] = {st_end_work, NULL, NULL},
-
-	[st_wait_action][true_signal] = {st_request_for_receipt, request_for_receipt, NULL},
-	[st_wait_action][false_signal] = {st_request_for_continuation, request_for_continuation, NULL},
-
-	[st_request_for_receipt][true_signal] = {st_request_for_continuation, request_for_continuation, NULL},
-	[st_request_for_receipt][false_signal] = {st_end_work, NULL, NULL},
-
-	[st_request_for_continuation][true_signal] = {st_enter_pass, enter_pass, NULL},
-	[st_request_for_continuation][false_signal] = {st_give_back_card, give_back_card, NULL},
+struct transition_action {
+    enum action_states new_state;
+    func_ptr function1;
+    func_ptr function2;
 };
 
-int electic_eq = 1;
-int water_level = 100;
-int equip = 1;
-int litter = 0;
-int work_coffee = 1;
+#include "head_server.h"
+
+#define BUFFER_SIZE 32
+
+#define PORT 2000
+
+struct transition sm_table [12][2] = {
+    [st_begin_work][true_signal] = {st_waiting_for_card, waiting_for_card, NULL},
+    [st_begin_work][false_signal] = {st_end_work, end_work, NULL},
+
+    [st_waiting_for_card][true_signal] = {st_check_card, check_card, NULL},
+    [st_waiting_for_card][false_signal] = {st_end_work, NULL, NULL},
+    
+    [st_check_card][true_signal] = {st_choose_language, choose_language, NULL},
+    [st_check_card][false_signal] = {st_give_back_card, give_back_card, NULL},
+    
+    [st_give_back_card][true_signal] = {st_waiting_for_card, waiting_for_card, NULL},
+    [st_give_back_card][false_signal] = {st_end_work NULL, NULL},   
+
+    [st_choose_language][true_signal] = {st_enter_pass, enter_pass, NULL},
+    [st_choose_language][false_signal] = {st_end_work, NULL, NULL},
+
+    [st_enter_pass][true_signal] = {st_wait_action, wait_action, NULL},
+    [st_enter_pass][false_signal] = {st_block_card, block_card, NULL},
+
+    [st_block_card][true_signal] = {st_give_back_card, give_back_card, send_data_block_card},
+    [st_block_card][false_signal] = {st_end_work, NULL, NULL},
+
+    [st_wait_action][true_signal] = {st_request_for_receipt, request_for_receipt, NULL},
+    [st_wait_action][false_signal] = {st_request_for_continuation, request_for_continuation, NULL},
+
+    [st_request_for_receipt][true_signal] = {st_request_for_continuation, request_for_continuation, NULL},
+    [st_request_for_receipt][false_signal] = {st_end_work, NULL, NULL},
+
+    [st_request_for_continuation][true_signal] = {st_enter_pass, enter_pass, NULL},
+    [st_request_for_continuation][false_signal] = {st_give_back_card, give_back_card, NULL},
+};
+
+struct transition_action sm_action_table [12][2] = {
+    [st_add_money][true_signal] = {st_wait_for_bill, wait_for_bill, NULL},
+    [st_add_money][false_signal] = {st_end, NULL, NULL},
+
+    [st_wait_for_bill][true_signal] = {st_check_bill, check_bill, NULL},
+    [st_wait_for_bill][false_signal] = {st_end, end, send_request_to_bank},
+
+    [st_check_bill][true_signal] = {st_add_bill_to_account, add_bill_to_account, NULL},
+    [st_check_bill][false_signal] = {st_give_back_bill, give_back_bill, NULL},
+
+    [st_give_back_bill][true_signal] = {st_wait_for_bill, wait_for_bill, NULL},
+    [st_give_back_bill][false_signal] = {st_end, NULL, NULL},
+
+    [st_add_bill_to_account][true_signal] = {st_wait_for_bill, wait_for_bill, NULL},
+    [st_add_bill_to_account][false_signal] = {st_end, end, NULL},
+
+    [st_send_request_to_bank][true_signal] = {st_encript_data_for_add_money, encript_data_for_add_money, NULL},
+    [st_send_request_to_bank][false_signal] = {st_end, NULL, NULL},
+
+    [st_encript_data_for_add_money][true_signal] = {st_end, end, NULL},
+    [st_encript_data_for_add_money][false_signal] = {st_end, NULL, NULL},
+
+    //take money
+
+    [st_take_money][true_signal] = {st_wait_money_count, wait_money_count, NULL},
+    [st_take_money][false_signal] = {st_end, NULL, NULL},
+
+    [st_wait_money_count][true_signal] = {st_send_request_for_take_money, send_request_for_take_money, NULL},
+    [st_wait_money_count][false_signal] = {st_end, NULL, NULL},
+
+    [st_send_request_for_take_money][true_signal] = {st_encript_data_for_take_money, encript_data_for_take_money, NULL},
+    [st_send_request_for_take_money][false_signal] = {st_end, NULL, NULL},
+
+    [st_encript_data_for_take_money][true_signal] = {st_decript_data, decript_data, NULL},
+    [st_encript_data_for_take_money][false_signal] = {st_end, NULL, NULL},
+
+    [st_decript_data][true_signal] = {st_end, end, NULL},
+    [st_decript_data][false_signal] = {st_end, NULL, NULL},
+};
+
+int electricity = 1;
+char card[BUFFER_SIZE];
+char language[BUFFER_SIZE];
+char bill[BUFFER_SIZE];
 
 char keystoke = 0;
 
@@ -166,14 +173,14 @@ int main () {
     }
     listen (listen_sock, 1);
     
-   	pthread_t thr;
-  	
-  	struct thr_listen_sock* data = (struct thr_listen_sock*)malloc (sizeof (struct thr_listen_sock));
-  	
-  	data->listen_sock = listen_sock;
+    pthread_t thr;
+    
+    struct thr_listen_sock* data = (struct thr_listen_sock*)malloc (sizeof (struct thr_listen_sock));
+    
+    data->listen_sock = listen_sock;
 
 
-  	pthread_create (&thr, NULL, server_accept, (void*) data);
+    pthread_create (&thr, NULL, server_accept, (void*) data);
 
     while (scanf("%c", &keystoke)) {
         if (keystoke == 'p')
@@ -188,53 +195,285 @@ int main () {
     close (listen_sock);
 }
 
-void coffee_machine(struct thr_data* data) {
-	char buff[BUFFER_SIZE];
+void bank_machine (struct thr_data* data) {
+    char buff[BUFFER_SIZE];
 
-	int cond_recv = recv (data->sock, buff, BUFFER_SIZE, 0);
+    int cond_recv = recv (data->sock, buff, BUFFER_SIZE, 0);
 
-	if (cond_recv < 0) {
-		puts ("Failed recv");
-		exit (EXIT_FAILURE);
-	}
-	if (cond_recv == 0) {
-		free (data);
-		return;
-	}
+    if (cond_recv < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+    if (cond_recv == 0) {
+        free (data);
+        return;
+    }
 
-	if (strcmp (buff, "bank") == 0) {
-		coffee (data->sock);
-	}
+    if (strcmp (buff, "bank") == 0) {
+        bank (data->sock);
+    }
 
-	free (data);
+    free (data);
 }
 
-void coffee (int sock) {
-	enum signals signal = true_signal;
-	enum states state = st_begin_work;
+void bank (int sock) {
+    enum            signals signal = true_signal;
+    enum            states state = st_begin_work;
+    func_ptr        work1;
+    func_ptr        work2;
 
-	func_ptr work;
+    begin_work (&signal, sock);
 
-	begin_work (&signal, sock);
+    while (state != end_work) {
+        work1 = sm_table[state][signal].function1;
+        work2 = sm_table[state][signal].function2;
 
-	while (work_coffee) {
-		work = sm_table[state][signal].function;
-		state = sm_table[state][signal].new_state;
+        state = sm_table[state][signal].new_state;
 
-		if (work != NULL) {
-			work (&signal, sock);
-		}
-	}
+        if (work1 != NULL) {
+            work1 (&signal, sock);
+        }
+        if (work2 != NULL) {
+            work2 (&signal, sock);
+        }
+    }
 }
+
+void add_bill_to_account (enum signals* signal, int sock) {
+    puts ("add_bill_to_account");
+}
+
+void give_back_bill (enum signals* signal, int sock) {
+    puts ("give_back_bill");
+    *signal = true_signal;
+}
+
+void check_bill (enum signals* signal, int sock) {
+    puts ("check_bill");
+
+    if (strcmp (bill, "1") == 0 || strcmp (bill, "10") == 0 || strcmp (bill, "5") == 0 ||) {
+        *signal = true_signal;
+        return;
+    }
+    *signal = false_signal;
+}
+
+void wait_for_bill (enum signals* signal, int sock) {
+    char buff[BUFFER_SIZE];
+    memset (buff, '\0', BUFFER_SIZE);
+
+    puts ("wait for bill");
+
+    if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+
+    if (strcmp (buff, "end\n")) {
+        *signal = false_signal;
+        return;
+    }
+
+    strcat (bill, buff);
+    *signal = true_signal;
+}
+
+void add_money (enum signals* signal, int sock) {
+    puts ("Add money");
+
+    *signal = true_signal;
+}
+
+void request_for_continuation (enum signals* signal, int sock) {
+    char buff[BUFFER_SIZE];
+    memset (buff, '\0', BUFFER_SIZE);
+
+    puts ("request_for_continuation");
+
+    if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+
+    if (strcmp (buff, "+\n") == 0) {
+        *signal = true_signal;
+        return;
+    }
+    *signal = false_signal;
+}
+
+void request_for_receipt (enum signals* signal, int sock) {
+    char buff[BUFFER_SIZE];
+    memset (buff, '\0', BUFFER_SIZE);
+
+    puts ("request for receipt");
+
+    if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+
+    if (strcmp (buff, "+\n") == 0) {
+        puts ("receipt");
+    }
+
+    *signal = true_signal;
+}
+
+void wait_action (enum signals* signal, int sock) {
+    char            buff[BUFFER_SIZE];
+    enum            signals signal_action = true_signal;
+    enum            states_action state;
+    func_ptr        work1;
+    func_ptr        work2;
+    
+    memset (buff, '\0', BUFFER_SIZE);
+
+    if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+
+    if (strcmp (buff, "add\n")) {
+        state = st_add_money;
+        add_money (&signal_action, sock);
+    }
+    else {
+        state = st_take_money;
+        take_money (&signal_action, sock);
+    }
+
+    while (state != end) {
+        work1 = sm_action_table[state][signal_action].function1;
+        work2 = sm_action_table[state][signal_action].function2;
+
+        state = sm_action_table[state][signal_action].new_state;
+
+        if (work1 != NULL) {
+            work1 (&signal_action, sock);
+        }
+        if (work2 != NULL) {
+            work2 (&signal_action, sock);
+        }
+    }
+
+    *signal = true_signal;
+}
+
+void send_data_block_card (enum signals* signal, int sock) {
+    puts ("send_data_block_card");
+
+    encript (buff);
+}
+
+void block_card (enum signals* signal, int sock) {
+    puts ("Your card is blocked");
+    *signal = true_signal;
+}
+
+void enter_pass (enum signals* signal, int sock) {
+    char buff[BUFFER_SIZE];
+    char pass[BUFFER_SIZE] = "123\n";
+
+    memset (buff, '\0', BUFFER_SIZE);
+    for (int i = 0; i < 3; i++) {
+        if (strcmp (language, "ru\n")) {
+            strcat (buff, "Введите пароль")
+        }
+        else if (strcat (language, "en\n")){
+            strcat (buff, "Enter password");
+        }
+
+        if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed send");
+            exit (EXIT_FAILURE);
+        }
+
+        memset (buff, '\0', BUFFER_SIZE);
+        if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed recv");
+            exit (EXIT_FAILURE);
+        }
+
+        if (strcmp (pass , buff) == 0) {
+            puts (right);
+            *signal = true_signal;
+            return;
+        }
+        else  {
+            puts ("false");
+        }
+    }
+    *signal = false_signal;
+}
+
+void choose_language (enum signals* signal, int sock) {
+    char buff[BUFFER_SIZE] = "choose language";
+
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed send");
+        exit (EXIT_FAILURE);
+    }
+    memset (buff, '\0', BUFFER_SIZE);
+    memset (language, '\0', BUFFER_SIZE);
+
+    if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+    strcat (language, buff);
+}
+
+void give_back_card (enum signals* signal, int sock) {
+    memset (card, '\0', BUFFER_SIZE);
+    puts ("take card");
+
+    *signal = true_signal;
+}
+
+void check_card (enum signals* signal, int sock) {
+    if (strcmp (card, "bank") == 0) {
+        *signal = true_signal;
+        return;
+    }
+    *signal = false_signal;
+}
+
+void waiting_for_card (enum signals* signal, int sock) {
+    char buff[BUFFER_SIZE] = "wait card";
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed send");
+        exit (EXIT_FAILURE);
+    }
+    memset (buff, '\0', BUFFER_SIZE);
+    memset (card, '\0', BUFFER_SIZE);
+
+    if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+    strcat (card, buff);
+
+    *signal = true_signal;
+}
+
+void begin_work (enum signals* signal, int sock) {
+    if (electricity == 1) {
+        *signal = true_signal;
+        return;
+    }
+    *signal = false_signal;
+}
+
 
 void server_accept (struct thr_listen_sock* data_listen) {
-	struct thr_node* thr_top = NULL;
+    struct thr_node* thr_top = NULL;
     struct thr_data* data = NULL;
     struct thr_node* tmp;
 
     int sock;
 
-	while (keystoke != 'p') {
+    while (keystoke != 'p') {
         if ((sock = accept (data_listen->listen_sock, NULL, NULL)) < 0) {
             puts ("Failed accept connection");
             exit (EXIT_FAILURE);
@@ -251,13 +490,13 @@ void server_accept (struct thr_listen_sock* data_listen) {
     }
 
     while (thr_top != NULL) {
-    	if (pthread_join (thr_top->thread, NULL)) {
-    		puts ("Failed join thread");
-    		exit (EXIT_FAILURE);
-    	}
-    	tmp = thr_top;
-    	thr_top = thr_top->next;
-    	free (tmp);
+        if (pthread_join (thr_top->thread, NULL)) {
+            puts ("Failed join thread");
+            exit (EXIT_FAILURE);
+        }
+        tmp = thr_top;
+        thr_top = thr_top->next;
+        free (tmp);
     }
 }
 
@@ -273,7 +512,7 @@ void create_thread(struct thr_node** thr_top, struct thr_data* data) {
         (*thr_top)->next = NULL;
         data->id = (*thr_top)->id;
 
-        if (pthread_create (&((*thr_top)->thread), NULL, coffee_machine, data)) {
+        if (pthread_create (&((*thr_top)->thread), NULL, bank_machine , data)) {
             puts ("Failed create thread top");
             exit (EXIT_FAILURE);
         }
@@ -296,7 +535,7 @@ void create_thread(struct thr_node** thr_top, struct thr_data* data) {
 
         tmp->next = NULL;
         
-        if (pthread_create (&(tmp->thread), NULL, coffee_machine, data)) {
+        if (pthread_create (&(tmp->thread), NULL, bank_machine , data)) {
             puts ("Failed create thread");
             exit (EXIT_FAILURE);
         }
