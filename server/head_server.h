@@ -24,14 +24,12 @@ struct thr_node {
     struct thr_node* next;
 };
 
-struct st_data {
-	int sock;
-	enum signals* signal;
-}
+
 
 void create_thread(struct thr_node** thr_top, struct thr_data* data);
-
 void server_accept (struct thr_listen_sock* data_listen);
+
+void bank (int sock);
 
 void begin_work (enum signals* signal, int sock);
 void end_work (enum signals* signal, int sock);

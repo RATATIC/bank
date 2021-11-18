@@ -24,6 +24,8 @@
 
 #define PORT 2000
 
+int flag_work ;
+
 int main () {
     int sock;
     struct sockaddr_in  addr;
@@ -48,17 +50,21 @@ int main () {
             break;
         }
 
+        flag_work = 1;
         if (strcmp (buff, "bank\n") == 0) {
-            send_coffee (sock);
-            break;
+            while (flag_work == 1) {
+                bank (sock);
+            }
+          //  break;
         }
         memset (buff, '\0', BUFFER_SIZE);
     }
     close (sock);
 }
 
-void send_coffee (int sock) {
+void bank (int sock) {
     char buff[BUFFER_SIZE] = "bank";
+    int  reciept_flag;
 
     if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
         puts ("Failed send");
@@ -77,11 +83,100 @@ void send_coffee (int sock) {
             puts ("Failed recv");
             exit (EXIT_FAILURE);
         }
-        puts (buff);
+        //puts (buff);
 
-        if (strcmp (buff, "order confirmed") == 0) {
+        if (strcmp (buff, "confirmed") == 0) {
             break;
         }
         memset (buff, '\0', BUFFER_SIZE);
     }
+
+    memset (buff, '\0', BUFFER_SIZE);
+    fgets (buff, BUFFER_SIZE - 1, stdin);
+
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed recv");
+            exit (EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < 3; i++) {
+        memset (buff, '\0', BUFFER_SIZE);
+        fgets (buff, BUFFER_SIZE - 1, stdin);
+
+        if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed recv");
+            exit (EXIT_FAILURE);
+        }
+        if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed recv");
+            exit (EXIT_FAILURE);
+        }
+
+        if (strcmp (buff, "right") == 0) {
+            break;
+        }
+        if (i == 2) {
+            return;
+        }
+    }
+
+    memset (buff, '\0', BUFFER_SIZE);
+    fgets (buff, BUFFER_SIZE - 1, stdin);
+
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed recv");
+            exit (EXIT_FAILURE);
+    }
+    if (strcmp (buff, "add\n") == 0) {
+        reciept_flag = add_func (sock);
+    }
+    else {
+        reciept_flag = take_func (sock);
+    }
+
+    if (reciept_flag == 1) {
+        memset (buff, '\0', BUFFER_SIZE);
+        fgets (buff, BUFFER_SIZE - 1, stdin);
+
+        if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed recv");
+            exit (EXIT_FAILURE);
+        }
+    }
+
+    memset (buff, '\0', BUFFER_SIZE);
+    fgets (buff, BUFFER_SIZE - 1, stdin);
+
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed recv");
+        exit (EXIT_FAILURE);
+    }
+    flag_work = 0;
+}
+
+int add_func (int sock) {
+    char buff[BUFFER_SIZE];
+    memset (buff, '\0', BUFFER_SIZE);
+
+    while (1) {
+        fgets (buff, BUFFER_SIZE - 1, stdin);
+
+        if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+            puts ("Failed send");
+            exit (EXIT_FAILURE);
+        }
+
+        //puts (buff);
+
+        if (strcmp (buff, "end") == 0) {
+            break;
+        }
+        memset (buff, '\0', BUFFER_SIZE);
+    }
+
+    return 1;
+}
+
+int take_func (int sock) {
+    return 1;
 }
