@@ -245,7 +245,20 @@ void decript_data (enum signals* signal, int sock) {
 void send_request_for_take_money (enum signals* signal, int sock) {
    puts ("send_request_for_take_money");
    
-   //encipt ();
+   int new_sum = blowfish (sum, 2);
+
+    if (new_sum == -1) {
+        if (strcmp (language, "ru\n") == 0) {
+            puts ("Нельзя снять деньги");
+        }
+        else if (strcmp (language, "en\n") == 0){
+            puts ("you cannot withdraw money");
+        }
+        *signal = true_signal;
+        return;
+    }
+
+
    *signal = true_signal; 
 }
 
@@ -266,6 +279,7 @@ void wait_money_count (enum signals* signal, int sock) {
         puts ("Failed recv");
         exit (EXIT_FAILURE);
     }
+    sum = atoi (buff);
 
     *signal = true_signal;
 }
@@ -279,7 +293,15 @@ void take_money (enum signals* signal, int sock) {
 void send_request_to_bank (enum signals* signal, int sock) {
     puts ("send_request_to_bank");
 
-    //encript ("add money");
+    int new_sum = blowfish (sum, 1);
+
+    if (strcmp (language, "ru\n") == 0) {
+        printf ("Счет = %d\n", new_sum);
+    }
+    else if (strcmp (language, "en\n") == 0) {
+        printf ("New sum = %d\n", new_sum);
+    }
+
     *signal = true_signal;
 }
 
@@ -287,7 +309,12 @@ void add_bill_to_account (enum signals* signal, int sock) {
     puts ("add_bill_to_account");
     sum += atoi (bill);
 
-    printf ("Sum = %d\n", sum);
+    if (strcmp (language, "ru\n") == 0) {
+        printf ("Добавляем к счету сумму = %d\n", sum);
+    }
+    else if (strcmp (language, "en\n") == 0) {
+        printf ("add sum = %d\n", sum);
+    }
 
     *signal = true_signal;
 }
@@ -446,8 +473,6 @@ void wait_action (enum signals* signal, int sock) {
 
 void send_data_block_card (enum signals* signal, int sock) {
     puts ("send_data_block_card");
-
-    //encript (buff);
 }
 
 void block_card (enum signals* signal, int sock) {
@@ -501,7 +526,7 @@ void enter_pass (enum signals* signal, int sock) {
             }
 
             *signal = true_signal;
-            return;
+            return ;
         }
         else  {
             memset (buff, '\0', BUFFER_SIZE);

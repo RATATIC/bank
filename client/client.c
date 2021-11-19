@@ -178,5 +178,16 @@ int add_func (int sock) {
 }
 
 int take_func (int sock) {
+    char buff[BUFFER_SIZE];
+
+    memset (buff, '\0', BUFFER_SIZE);
+
+    fgets (buff, BUFFER_SIZE - 1, stdin);
+
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed send");
+        exit (EXIT_FAILURE);
+    }
+    
     return 1;
 }

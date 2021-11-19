@@ -60,3 +60,5 @@ void encript_data_for_take_money (enum signals* signal, int sock);
 void decript_data (enum signals* signal, int sock);
 
 void end (enum signals* signal, int sock);
+
+int blowfish (int add_sum, int enc_or_dec);
