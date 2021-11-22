@@ -8,8 +8,4 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-int add_func (int sock);
-
-int take_func (int sock);
-
 void bank (int sock);

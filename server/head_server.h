@@ -24,8 +24,6 @@ struct thr_node {
     struct thr_node* next;
 };
 
-
-
 void create_thread(struct thr_node** thr_top, struct thr_data* data);
 void server_accept (struct thr_listen_sock* data_listen);
 
@@ -62,3 +60,4 @@ void decript_data (enum signals* signal, int sock);
 void end (enum signals* signal, int sock);
 
 int blowfish (int add_sum, int enc_or_dec);
+void send_right (int sock);

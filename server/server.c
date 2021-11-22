@@ -233,17 +233,17 @@ void end_work (enum signals* signal, int sock) {
 }
 
 void end (enum signals* signal, int sock) {
-    puts ("end");
+    //puts ("end");
 }
 
 void decript_data (enum signals* signal, int sock) {
-    puts ("decript_data");
+    //puts ("decript_data");
 
     *signal = true_signal;
 }
 
 void send_request_for_take_money (enum signals* signal, int sock) {
-   puts ("send_request_for_take_money");
+   //puts ("send_request_for_take_money");
    
    int new_sum = blowfish (sum, 2);
 
@@ -258,15 +258,22 @@ void send_request_for_take_money (enum signals* signal, int sock) {
         return;
     }
 
+    if (strcmp (language, "ru\n") == 0) {
+        printf ("На счете осталось : %d\n", new_sum);
+    }
+    else if (strcmp (language, "en\n") == 0){
+        printf ("Your account has : %d\n", new_sum);
+    }
+    send_right (sock);
 
-   *signal = true_signal; 
+    *signal = true_signal; 
 }
 
 void wait_money_count (enum signals* signal, int sock) {
     char buff[BUFFER_SIZE];
     memset (buff, '\0', BUFFER_SIZE);
 
-    puts ("wait_money_count");
+    //puts ("wait_money_count");
 
     if (strcmp (language, "ru\n") == 0) {
         puts ("Введите сумму которую хотете снять");
@@ -291,7 +298,7 @@ void take_money (enum signals* signal, int sock) {
 }
 
 void send_request_to_bank (enum signals* signal, int sock) {
-    puts ("send_request_to_bank");
+    //puts ("send_request_to_bank");
 
     int new_sum = blowfish (sum, 1);
 
@@ -306,7 +313,7 @@ void send_request_to_bank (enum signals* signal, int sock) {
 }
 
 void add_bill_to_account (enum signals* signal, int sock) {
-    puts ("add_bill_to_account");
+    //puts ("add_bill_to_account");
     sum += atoi (bill);
 
     if (strcmp (language, "ru\n") == 0) {
@@ -320,7 +327,7 @@ void add_bill_to_account (enum signals* signal, int sock) {
 }
 
 void give_back_bill (enum signals* signal, int sock) {
-    puts ("give_back_bill");
+    //puts ("give_back_bill");
 
     if (strcmp (language, "ru\n") == 0) {
         puts ("Возврат купюры");
@@ -333,7 +340,7 @@ void give_back_bill (enum signals* signal, int sock) {
 }
 
 void check_bill (enum signals* signal, int sock) {
-    puts ("check_bill");
+    //puts ("check_bill");
 
     if (strcmp (bill, "1\n") == 0 || strcmp (bill, "10\n") == 0 || strcmp (bill, "5\n") == 0) {
         *signal = true_signal;
@@ -346,12 +353,20 @@ void wait_for_bill (enum signals* signal, int sock) {
     char buff[BUFFER_SIZE];
     memset (buff, '\0', BUFFER_SIZE);
 
-    puts ("wait_for_bill");
+    //puts ("wait_for_bill");
+
+    if (strcmp (language, "ru\n") == 0) {
+        puts ("Ожидание купюры");
+    }
+    else if (strcmp (language, "en\n") == 0){
+        puts ("Wait bill");
+    }
 
     if (recv (sock, buff, BUFFER_SIZE, 0) < 0) {
         puts ("Failed recv");
         exit (EXIT_FAILURE);
     }
+    send_right (sock);
 
     if (strcmp (buff, "end\n") == 0) {
         *signal = false_signal;
@@ -374,7 +389,7 @@ void request_for_continuation (enum signals* signal, int sock) {
     char buff[BUFFER_SIZE];
     memset (buff, '\0', BUFFER_SIZE);
 
-    puts ("request_for_continuation");
+    //puts ("request_for_continuation");
 
     if (strcmp (language, "ru\n") == 0) {
         puts ("Желаете продолжить");
@@ -387,6 +402,7 @@ void request_for_continuation (enum signals* signal, int sock) {
         puts ("Failed recv");
         exit (EXIT_FAILURE);
     }
+    send_right (sock);
 
     if (strcmp (buff, "+\n") == 0) {
         *signal = true_signal;
@@ -399,7 +415,7 @@ void request_for_receipt (enum signals* signal, int sock) {
     char buff[BUFFER_SIZE];
     memset (buff, '\0', BUFFER_SIZE);
 
-    puts ("request_for_receipt");
+    //puts ("request_for_receipt");
 
     if (strcmp (language, "ru\n") == 0) {
         puts ("Печать чек?");
@@ -421,6 +437,7 @@ void request_for_receipt (enum signals* signal, int sock) {
             puts ("Receipt");
         }
     }
+    send_right (sock);
 
     *signal = true_signal;
 }
@@ -449,10 +466,14 @@ void wait_action (enum signals* signal, int sock) {
         state = st_add_money;
         add_money (&signal_action, sock);
     }
-    else {
+    else if(strcmp (buff, "take\n") == 0){
         state = st_take_money;
         take_money (&signal_action, sock);
     }
+    else {
+        state = st_end;
+    }
+    send_right (sock);
 
     while (state != st_end) {
         work1 = sm_action_table[state][signal_action].function1;
@@ -472,11 +493,11 @@ void wait_action (enum signals* signal, int sock) {
 }
 
 void send_data_block_card (enum signals* signal, int sock) {
-    puts ("send_data_block_card");
+    //puts ("send_data_block_card");
 }
 
 void block_card (enum signals* signal, int sock) {
-    puts ("block_card");
+    //puts ("block_card");
 
     if (strcmp (language, "ru\n") == 0) {
         puts ("Ваша карта заблокиравана");
@@ -488,12 +509,10 @@ void block_card (enum signals* signal, int sock) {
 }
 
 void enter_pass (enum signals* signal, int sock) {
-    puts ("enter_pass");
+    //puts ("enter_pass");
 
     char buff[BUFFER_SIZE];
     char pass[BUFFER_SIZE] = "123\n";
-
-    memset (buff, '\0', BUFFER_SIZE);
 
     for (int i = 0; i < 3; i++) {
         if (strcmp (language, "ru\n") == 0) {
@@ -509,34 +528,19 @@ void enter_pass (enum signals* signal, int sock) {
             exit (EXIT_FAILURE);
         }
 
-        if (strcmp (pass , buff) == 0) {
+        if (strcmp (pass, buff) == 0) {
             if (strcmp (language, "ru\n") == 0) {
                 puts ("Правильный пароль");
             }
             else if (strcmp (language, "en\n") == 0){
                 puts ("Right password");
             }
-            
-            memset (buff, '\0', BUFFER_SIZE);
-            strcat (buff, "right");
-
-            if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
-                puts ("Failed send");
-                exit (EXIT_FAILURE);
-            }
 
             *signal = true_signal;
+            send_right (sock);
             return ;
         }
         else  {
-            memset (buff, '\0', BUFFER_SIZE);
-            strcat (buff, "false");
-
-            if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
-                puts ("Failed send");
-                exit (EXIT_FAILURE);
-            }
-
             if (strcmp (language, "ru\n") == 0) {
                 puts ("Не правильный пароль");
             }
@@ -544,12 +548,20 @@ void enter_pass (enum signals* signal, int sock) {
                 puts ("bad password");
             }
         }
+        send_right (sock);
+    }
+    memset (buff, '\0', BUFFER_SIZE);
+    strcat (buff, "false");
+
+    if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed send");
+        exit (EXIT_FAILURE);
     }
     *signal = false_signal;
 }
 
 void choose_language (enum signals* signal, int sock) {
-    puts ("choose_language");
+    puts ("choose language");
 
     char buff[BUFFER_SIZE];
 
@@ -560,11 +572,15 @@ void choose_language (enum signals* signal, int sock) {
         puts ("Failed recv");
         exit (EXIT_FAILURE);
     }
-    strcat (language, buff);
+    if (strcmp (buff, "ru\n") == 0 || strcmp (buff, "en\n") == 0) {
+        strcat (language, buff);
+        *signal = true_signal;
+    }
+    send_right (sock);
 }
 
 void give_back_card (enum signals* signal, int sock) {
-    puts ("give_back_card");
+    //puts ("give_back_card");
 
     memset (card, '\0', BUFFER_SIZE);        ///////////////
     puts ("take card");
@@ -574,14 +590,11 @@ void give_back_card (enum signals* signal, int sock) {
 }
 
 void check_card (enum signals* signal, int sock) {
-    puts ("check_card");
-    char buff[BUFFER_SIZE] = "confirmed";
+    //puts ("check_card");
+    char buff[BUFFER_SIZE];
 
     if (strcmp (card, "bank\n") == 0) {
-        if (send (sock, buff, BUFFER_SIZE, 0) < 0) {
-            puts ("Failed send");
-            exit (EXIT_FAILURE);
-        }
+        send_right (sock);
 
         *signal = true_signal;
         return;
@@ -598,7 +611,7 @@ void check_card (enum signals* signal, int sock) {
 }
 
 void waiting_for_card (enum signals* signal, int sock) {
-    puts ("waiting_for_card");
+    //puts ("waiting_for_card");
 
     char buff[BUFFER_SIZE];
    
@@ -611,11 +624,13 @@ void waiting_for_card (enum signals* signal, int sock) {
     }
     strcat (card, buff);
 
+    send_right (sock);
+
     *signal = true_signal;
 }
 
 void begin_work (enum signals* signal, int sock) {
-    puts ("begin_work");
+    //puts ("begin_work");
 
     if (electricity == 1) {
         *signal = true_signal;
@@ -698,5 +713,14 @@ void create_thread(struct thr_node** thr_top, struct thr_data* data) {
             puts ("Failed create thread");
             exit (EXIT_FAILURE);
         }
+    }
+}
+
+void send_right (int sock) {
+    char buff[BUFFER_SIZE] = "right";
+
+    if (send(sock, buff, BUFFER_SIZE, 0) < 0) {
+        puts ("Failed send");
+        exit (EXIT_FAILURE);
     }
 }

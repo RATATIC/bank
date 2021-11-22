@@ -1,8 +1,8 @@
 /*
-* @file main.c
+* @file encip.c
 * @author Renat Kagal <kagal@itspartner.net>
 *
-* Assembling : gcc -Wall main.c libhuffmancompress.a -o main
+* Assembling : gcc -Wall encip.c -o encip
 *
 * Description : Huffman algo
 *
@@ -24,107 +24,115 @@
 
 #define LONG_FROM_CHAR(buff, offset) (((unsigned long)((unsigned char)buff[(offset)])) | ((unsigned long)((unsigned char)buff[(offset) + 1]) << 8) | ((unsigned long)((unsigned char)buff[(offset) + 2]) << 16) | ((unsigned long)((unsigned char)buff[(offset) + 3]) << 24) | ((unsigned long)((unsigned char)buff[(offset) + 4]) << 32) | ((unsigned long)((unsigned char)buff[(offset) + 5]) << 40) | ((unsigned long)((unsigned char)buff[(offset) + 6]) << 48) | ((unsigned long)((unsigned char)buff[(offset) + 7]) << 56))
 
-int blowfish (int add_sum, int enc_or_dec) {
-	FILE* 			fp_write;
-	int 				offset = 0;
-	int 				sum = 0;
-	char 				read_buff [SIZE_OF_READ];
-	char* 			key = "aa";
-	int 				keybytes = strlen (key);
-	unsigned long 	xr;
-	unsigned long	xl;
+int blowfish (unsigned int add_sum, int enc_or_dec) {
+   FILE*          fp_write;
+   int            offset = 0;
+   int            sum = 0;
+   char           read_buff [SIZE_OF_READ];
+   char*          key = "aaasfasfsafs";
+   int            keybytes = strlen (key);
+   unsigned long  xr = 0;
+   unsigned long  xl = 0;
+   static int flag_init = 0;
 
-	blowfish_init (key, keybytes);
+   memset (read_buff, '\0', SIZE_OF_READ);
+   if (flag_init == 0) {
+      blowfish_init (key, keybytes);
+      flag_init = 1;
+   }
+   
 
-	if (enc_or_dec == 1) {
-		if ((fp_write = fopen ("encip.txt", "r")) == NULL) {
-			puts ("Failed fopen");
-			exit (EXIT_FAILURE);
-		}
+   if (enc_or_dec == 1) {
+      if ((fp_write = fopen ("encip.txt", "r")) == NULL) {
+         puts ("Failed fopen");
+         exit (EXIT_FAILURE);
+      }
 
-		fscanf (fp_write, "%ld%ld", &xl, &xr);
-		blowfish_decipher (&xl, &xr);
+      fscanf (fp_write, "%ld%ld", &xl, &xr);
+      blowfish_decipher (&xl, &xr);
 
-		for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
-       	read_buff[offset] = (0xff & (xl >> (j * CHAR_SIZE)));
-     	}
+      offset = 0;
       for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
-        	read_buff[offset] = (0xff & (xr >> (j * CHAR_SIZE)));
+         read_buff[offset] = (0xff & (xl >> (j * CHAR_SIZE)));
+      }
+      for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
+         read_buff[offset] = (0xff & (xr >> (j * CHAR_SIZE)));
       }
       add_sum += atoi (read_buff);
       memset (read_buff, '\0', SIZE_OF_READ);
       sprintf (read_buff, "%d", add_sum);
+      
+      offset = 0;
+      xl = LONG_FROM_CHAR (read_buff, offset);  
+      offset += 8;
+      xr = LONG_FROM_CHAR (read_buff, offset);
 
-		offset = 0;
-		xl = LONG_FROM_CHAR (read_buff, offset);	
-		offset += 8;
-		xr = LONG_FROM_CHAR (read_buff, offset);
-		
-		blowfish_encipher (&xl, &xr);
+      blowfish_encipher (&xl, &xr);
 
       fclose (fp_write);
 
-		if ((fp_write = fopen ("encip.txt", "w+")) == NULL) {
-				puts ("Failed fopne");
-				exit (EXIT_FAILURE);
-		}
-
-		fprintf(fp_write, "%ld %ld ", xl, xr);
-		
-		offset = 0;
-		memset (read_buff, '\0', SIZE_OF_READ);
-		
-		if (fclose (fp_write)) {
-			puts ("Failed fclose");
-			exit (EXIT_FAILURE);
-		}
-		return add_sum;
-	}
-	else {
-		if ((fp_write = fopen ("encip.txt", "r")) == NULL) {
-			puts ("Failed fopen");
-			exit (EXIT_FAILURE);
-		}
-		
-		fscanf (fp_write, "%ld%ld", &xl, &xr);
-		blowfish_decipher (&xl, &xr);
-		
-		for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
-       	read_buff[offset] = (0xff & (xl >> (j * CHAR_SIZE)));
-     	}
-      for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
-        	read_buff[offset] = (0xff & (xr >> (j * CHAR_SIZE)));
+      if ((fp_write = fopen ("encip.txt", "w+")) == NULL) {
+            puts ("Failed fopne");
+            exit (EXIT_FAILURE);
       }
-      puts (read_buff);
+      fprintf(fp_write, "%ld %ld", xl, xr);
+           
+      if (fclose (fp_write)) {
+         puts ("Failed fclose");
+         exit (EXIT_FAILURE);
+      }
+      return add_sum;
+   }
+   else {
+      if ((fp_write = fopen ("encip.txt", "r")) == NULL) {
+         puts ("Failed fopen");
+         exit (EXIT_FAILURE);
+      }
+      
+      fscanf (fp_write, "%ld%ld", &xl, &xr);
+      blowfish_decipher (&xl, &xr);
+      
+      for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
+         read_buff[offset] = (0xff & (xl >> (j * CHAR_SIZE)));
+      }
+      for (int j = 0; j < sizeof (unsigned long); j++, offset++) {
+         read_buff[offset] = (0xff & (xr >> (j * CHAR_SIZE)));
+      }
+      //puts (read_buff);
       sum = atoi (read_buff);
 
       if (add_sum > sum) {
-      	return -1;
+         return -1;
       }
 
       add_sum = sum - add_sum;
 
       memset (read_buff, '\0', SIZE_OF_READ);
       sprintf (read_buff, "%d", add_sum);
-      puts (read_buff);
-		offset = 0;
-		xl = LONG_FROM_CHAR (read_buff, offset);	
-		offset += 8;
-		xr = LONG_FROM_CHAR (read_buff, offset);
-		
-		blowfish_encipher (&xl, &xr);
+      //puts (read_buff);
+      offset = 0;
+      xl = LONG_FROM_CHAR (read_buff, offset);  
+      offset += 8;
+      xr = LONG_FROM_CHAR (read_buff, offset);
+      
+      blowfish_encipher (&xl, &xr);
 
       fclose (fp_write);
 
-		if ((fp_write = fopen ("encip.txt", "w+")) == NULL) {
-				puts ("Failed fopne");
-				exit (EXIT_FAILURE);
-		}
+      if ((fp_write = fopen ("encip.txt", "w+")) == NULL) {
+            puts ("Failed fopne");
+            exit (EXIT_FAILURE);
+      }
 
-		fprintf(fp_write, "%ld %ld ", xl, xr);
+      fprintf(fp_write, "%ld %ld", xl, xr);
 
-		return add_sum;
-	}
+      if (fclose (fp_write)) {
+         puts ("Failed fclose");
+         exit (EXIT_FAILURE);
+      }
+
+      return add_sum;
+   }
 }
 
 void blowfish_encipher(unsigned long *xl, unsigned long *xr) {
@@ -186,42 +194,42 @@ void blowfish_decipher(unsigned long *xl, unsigned long *xr) {
 }
 
 void blowfish_init (char key[], int keybytes) {
-	int 					bytes_count;
-	unsigned long  	l;
-	unsigned long  	r;
-	unsigned long  	data;
+   int               bytes_count;
+   unsigned long     l;
+   unsigned long     r;
+   unsigned long     data;
 
-	bytes_count = 0;
+   bytes_count = 0;
 
-	for (int i = 0; i < N + 2; i++ ) {
-		data = 0;
-		for (int k = 0; k < 4; k++) {
-			data = (data << 8) | key[bytes_count++];
+   for (int i = 0; i < N + 2; i++ ) {
+      data = 0;
+      for (int k = 0; k < 4; k++) {
+         data = (data << 8) | key[bytes_count++];
 
-			if (bytes_count >= keybytes) {
-				bytes_count = 0;
-			}
-		}
-		P[i] = P[i] ^ data;
-	}
-	l = 0;
-	r = 0;
+         if (bytes_count >= keybytes) {
+            bytes_count = 0;
+         }
+      }
+      P[i] = P[i] ^ data;
+   }
+   l = 0;
+   r = 0;
 
-	for (int i = 0; i < N + 2; i+=2 ) {
-		blowfish_encipher (&l, &r);
+   for (int i = 0; i < N + 2; i+=2 ) {
+      blowfish_encipher (&l, &r);
 
-		l = P[i];
-		r = P[i + 1];
-	}
+      l = P[i];
+      r = P[i + 1];
+   }
 
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 256; j+=2 ) {
-			blowfish_encipher(&l, &r);
+   for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 256; j+=2 ) {
+         blowfish_encipher(&l, &r);
    
-	    	S[i][j] = l;
-	    	S[i][j + 1] = r;
-		}
-	}
+         S[i][j] = l;
+         S[i][j + 1] = r;
+      }
+   }
 }
 
 unsigned long f(unsigned long x) {
